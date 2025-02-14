@@ -3,10 +3,12 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Manufacturer;
 use App\Models\Department;
+use App\Jobs\ProcessProductData;
 
 class ProcessProductFile extends Command
 {
@@ -66,6 +68,9 @@ class ProcessProductFile extends Command
             $departmentNames = [];
             $manufacturerNames = [];
 
+            $chunkSize = 50;
+            $counter = 0; // Row tracker.
+
             //Read each line of the CSV.
             while (($row = fgetcsv($handle)) !== false) { //Checks if there are more rows to read in the CSV file. If there are no more rows or an error occurs, the loop stops.
                 //Map the CSV columns.
@@ -75,22 +80,21 @@ class ProcessProductFile extends Command
                 $categoryNames[] = $productData['category_name'];
                 $departmentNames[] = $productData['department_name'];
                 $manufacturerNames[] = $productData['manufacturer_name'];
+
+                //If the chunk size is reached, dispatch a job.
+                if (++$counter % $chunkSize == 0) {
+                    $this->dispatchJob($categoryNames, $departmentNames, $manufacturerNames);
+
+                    $categoryNames = [];
+                    $departmentNames = [];
+                    $manufacturerNames = [];
+                }
             }
 
-            //Removing duplicates.
-            $categoryNames = array_unique($categoryNames);
-            $departmentNames = array_unique($departmentNames);
-            $manufacturerNames = array_unique($manufacturerNames);
-
-            //Map records.
-            $categoriesToInsert = array_map(fn($name) => ['name' => $name, 'created_at' => now(), 'updated_at' => now()], $categoryNames);
-            $departmentsToInsert = array_map(fn($name) => ['name' => $name, 'created_at' => now(), 'updated_at' => now()], $departmentNames);
-            $manufacturersToInsert = array_map(fn($name) => ['name' => $name, 'created_at' => now(), 'updated_at' => now()], $manufacturerNames);
-
-            //Inserting and checking for existing records.
-            Category::upsert($categoriesToInsert, ['name'], ['created_at', 'updated_at']);
-            Department::upsert($departmentsToInsert, ['name'], ['created_at', 'updated_at']);
-            Manufacturer::upsert($manufacturersToInsert, ['name'], ['created_at', 'updated_at']);
+            //Dispatch any remaining data.
+            if (count($categoryNames) > 0) {
+                $this->dispatchJob($categoryNames, $departmentNames, $manufacturerNames);
+            }
 
             fclose($handle);
             $this->info("Data successfully imported from $filePath.");
@@ -101,5 +105,19 @@ class ProcessProductFile extends Command
         }
 
         return 0;
+    }
+
+    /**
+     * Dispatch the job to process the chunk of data.
+     *
+     * @param array $categoryNames
+     * @param array $departmentNames
+     * @param array $manufacturerNames
+     * @return void
+     */
+    protected function dispatchJob(array $categoryNames, array $departmentNames, array $manufacturerNames)
+    {
+        //Dispatch the job to process the chunk asynchronously.
+        ProcessProductData::dispatch($categoryNames, $departmentNames, $manufacturerNames);
     }
 }
