@@ -4,11 +4,13 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 
-use App\Models\Product;
-use App\Models\Category;
-use App\Models\Manufacturer;
-use App\Models\Department;
 use App\Jobs\ProcessProductData;
+
+use Illuminate\Bus\Batch;
+use Illuminate\Support\Facades\Bus;
+use Throwable;
+
+use Illuminate\Support\Facades\Log;
 
 class ProcessProductFile extends Command
 {
@@ -69,7 +71,8 @@ class ProcessProductFile extends Command
             $manufacturerNames = [];
 
             $chunkSize = 50;
-            $counter = 0; // Row tracker.
+            $counter = 0; //Row tracker.
+            $jobs = [];
 
             //Read each line of the CSV.
             while (($row = fgetcsv($handle)) !== false) { //Checks if there are more rows to read in the CSV file. If there are no more rows or an error occurs, the loop stops.
@@ -81,9 +84,9 @@ class ProcessProductFile extends Command
                 $departmentNames[] = $productData['department_name'];
                 $manufacturerNames[] = $productData['manufacturer_name'];
 
-                //If the chunk size is reached, dispatch a job.
+                //If the chunk size is reached, create a job.
                 if (++$counter % $chunkSize == 0) {
-                    $this->dispatchJob($categoryNames, $departmentNames, $manufacturerNames);
+                    $jobs[] = new ProcessProductData($categoryNames, $departmentNames, $manufacturerNames);
 
                     $categoryNames = [];
                     $departmentNames = [];
@@ -91,14 +94,15 @@ class ProcessProductFile extends Command
                 }
             }
 
-            //Dispatch any remaining data.
+            //Handle any remaining data.
             if (count($categoryNames) > 0) {
-                $this->dispatchJob($categoryNames, $departmentNames, $manufacturerNames);
+                $jobs[] = new ProcessProductData($categoryNames, $departmentNames, $manufacturerNames);
             }
 
-            fclose($handle);
-            $this->info("Data successfully imported from $filePath.");
+            //Dispatch batch of jobs.
+            $this->dispatchBatch($jobs);
 
+            fclose($handle);
         } else {
             $this->error("Failed to open the file: $filePath");
             return 1;
@@ -108,16 +112,18 @@ class ProcessProductFile extends Command
     }
 
     /**
-     * Dispatch the job to process the chunk of data.
+     * Dispatch all job instances in a batch.
      *
-     * @param array $categoryNames
-     * @param array $departmentNames
-     * @param array $manufacturerNames
+     * @param array $jobs
      * @return void
      */
-    protected function dispatchJob(array $categoryNames, array $departmentNames, array $manufacturerNames)
+    protected function dispatchBatch(array $jobs)
     {
         //Dispatch the job to process the chunk asynchronously.
-        ProcessProductData::dispatch($categoryNames, $departmentNames, $manufacturerNames);
+        Bus::batch($jobs)
+        ->then(function (Batch $batch) {})
+        ->catch(function (Batch $batch, Throwable $e) {})
+        ->finally(function (Batch $batch) {})
+        ->dispatch();
     }
 }
