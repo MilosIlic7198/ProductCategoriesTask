@@ -36,7 +36,7 @@ Route::delete('/categories/{id}', [CategoryController::class, 'deleteCategory'])
 
 Route::get('/products', [ProductController::class, 'getProducts']);
 
-Route::get('/categories/{id}/products', [CategoryController::class, 'getProductsOfCategory']);
+Route::get('/categories/{id}/products', [ProductController::class, 'getProductsOfCategory']);
 
 Route::put('/products/{id}', [ProductController::class, 'updateProduct']);
 
