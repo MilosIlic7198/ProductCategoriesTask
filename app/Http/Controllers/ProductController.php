@@ -199,10 +199,10 @@ class ProductController extends Controller
         $filename = $categoryName . '_' . $date . '.csv';
 
         //Path for csv.
-        $publicPath = public_path('csv');
+        $storagePath = storage_path('app/public/csv');
         //Check if the folder exists.
-        if (!file_exists($publicPath)) {
-            mkdir($publicPath, 0775, true); //Create it if not.
+        if (!file_exists($storagePath)) {
+            mkdir($storagePath, 0775, true); //Create it if not.
         }
 
         $csvContent = [];
@@ -221,7 +221,7 @@ class ProductController extends Controller
         }
 
         //Generate CSV file and store in storage folder.
-        $path = $publicPath . '/' . $filename;
+        $path = $storagePath . '/' . $filename;
         $file = fopen($path, 'w');
 
         //Inserting content.
@@ -232,7 +232,7 @@ class ProductController extends Controller
         fclose($file);
 
         //Generating a URL link to download file.
-        $fileUrl = url('csv/' . $filename);
+        $fileUrl = url('storage/csv/' . $filename);
 
         return response()->json([
             'success' => true,
