@@ -191,8 +191,11 @@ class ProductController extends Controller
         }
 
         //Structuring the file name.
-        $categoryName = preg_replace('/[^a-zA-Z0-9]/', '_', $category->name);
-        $date = Carbon::now()->format('Y_m_d-H_i');
+        $categoryName = preg_replace('/[^a-zA-Z0-9]/', '_', strtolower($category->name));
+        $categoryName = trim($categoryName, '_'); //This part was not fun at all.
+        $categoryName = preg_replace('/_+/', '_', $categoryName);
+
+        $date = Carbon::now('CET')->format('Y_m_d-H_i');
         $filename = $categoryName . '_' . $date . '.csv';
 
         //Path for csv.
