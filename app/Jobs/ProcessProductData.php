@@ -9,28 +9,22 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-use App\Models\Category;
-use App\Models\Department;
-use App\Models\Manufacturer;
+use Illuminate\Support\Facades\DB;
 
 class ProcessProductData implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $categoriesToInsert;
-    protected $departmentsToInsert;
-    protected $manufacturersToInsert;
+    protected $products;
 
     /**
      * Create a new job instance.
      *
      * @return void
      */
-    public function __construct(array $categoryNames, array $departmentNames, array $manufacturerNames)
+    public function __construct(array $products)
     {
-        $this->categoriesToInsert = $categoryNames;
-        $this->departmentsToInsert = $departmentNames;
-        $this->manufacturersToInsert = $manufacturerNames;
+        $this->products = $products;
     }
 
     /**
@@ -40,19 +34,99 @@ class ProcessProductData implements ShouldQueue
      */
     public function handle()
     {
-        //Remove duplicates.
-        $categoryNames = array_unique($this->categoriesToInsert);
-        $departmentNames = array_unique($this->departmentsToInsert);
-        $manufacturerNames = array_unique($this->manufacturersToInsert);
+        try {
+            //Collect unique category, department, and manufacturer names.
+            $categoriesCol = array_column($this->products, 'category_name');
+            $departmentsCol =  array_column($this->products, 'department_name');
+            $manufacturersCol =  array_column($this->products, 'manufacturer_name');
+            //
+            $categories = array_unique($categoriesCol);
+            $departments = array_unique($departmentsCol);
+            $manufacturers = array_unique($manufacturersCol);
 
-        //Map the data for insertion.
-        $categoriesToInsert = array_map(fn($name) => ['name' => $name, 'created_at' => now(), 'updated_at' => now()], $categoryNames);
-        $departmentsToInsert = array_map(fn($name) => ['name' => $name, 'created_at' => now(), 'updated_at' => now()], $departmentNames);
-        $manufacturersToInsert = array_map(fn($name) => ['name' => $name, 'created_at' => now(), 'updated_at' => now()], $manufacturerNames);
+            //Database transaction.
+            DB::beginTransaction();
+            $this->process($categories, $departments, $manufacturers);
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            dd($e->getMessage(), $e->getLine());
+        }
+    }
 
-        //Insert the data upsert.
-        Category::upsert($categoriesToInsert, ['name'], ['created_at', 'updated_at']);
-        Department::upsert($departmentsToInsert, ['name'], ['created_at', 'updated_at']);
-        Manufacturer::upsert($manufacturersToInsert, ['name'], ['created_at', 'updated_at']);
+    /**
+     * Process the job.
+     *
+     * @return void
+     */
+    private function process($categories, $departments, $manufacturers) {
+        //Bulk insert and get ids.
+        $categories = $this->insertAndGetIds('categories', $categories);
+        $departments = $this->insertAndGetIds('departments', $departments);
+        $manufacturers = $this->insertAndGetIds('manufacturers', $manufacturers);
+
+        $this->insertProducts($categories, $departments, $manufacturers);
+    }
+
+    /**
+     * Insert missing records and retrieve their IDs.
+     *
+     * @param  string  $table
+     * @param  array  $arr
+     * @return array
+     */
+    private function insertAndGetIds($table, $arr)
+    {
+        //Get existing records.
+        $existingRecords = DB::table($table)
+        ->whereIn('name', $arr)
+        ->pluck('id', 'name')
+        ->toArray();
+
+        //Insert missing records if any.
+        $missingNames = array_diff($arr, array_keys($existingRecords));
+        if ($missingNames) {
+            $currentTimestamp = now();
+            $insertData = array_map(fn($name) => ['name' => $name, 'created_at' => $currentTimestamp, 'updated_at' => $currentTimestamp], $missingNames);
+            DB::table($table)->insert($insertData);
+        }
+
+        //Return records.
+        return DB::table($table)
+        ->whereIn('name', $arr)
+        ->pluck('id', 'name')
+        ->toArray();
+    }
+
+    /**
+     * Insert products into the database.
+     *
+     * @param  array  $categories
+     * @param  array  $departments
+     * @param  array  $manufacturers
+     * @return void
+     */
+    private function insertProducts($categories, $departments, $manufacturers) {
+        $productsToInsert = [];
+        $currentTimestamp = now();
+
+        foreach ($this->products as $productData) {
+            $productsToInsert[] = [
+                'product_number' => $productData['product_number'],
+                'category_id' => $categories[$productData['category_name']],
+                'department_id' => $departments[$productData['department_name']],
+                'manufacturer_id' => $manufacturers[$productData['manufacturer_name']],
+                'upc' => $productData['upc'],
+                'sku' => $productData['sku'],
+                'regular_price' => $productData['regular_price'],
+                'sale_price' => $productData['sale_price'],
+                'description' => $productData['description'],
+                'created_at' => $currentTimestamp,
+                'updated_at' => $currentTimestamp,
+            ];
+        }
+
+        //Bulk insert products.
+        DB::table('products')->insert($productsToInsert);
     }
 }

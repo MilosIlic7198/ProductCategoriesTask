@@ -10,8 +10,6 @@ use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
 use Throwable;
 
-use Illuminate\Support\Facades\Log;
-
 class ProcessProductFile extends Command
 {
     /**
@@ -66,9 +64,7 @@ class ProcessProductFile extends Command
             //I hope you meant "department".
             //The category, manufacturers, and departments can maybe be processed separately in different files and with different services for example, so it will then be easier for product processing.
 
-            $categoryNames = [];
-            $departmentNames = [];
-            $manufacturerNames = [];
+            $products = [];
 
             $chunkSize = 50;
             $counter = 0; //Row tracker.
@@ -79,28 +75,36 @@ class ProcessProductFile extends Command
                 //Map the CSV columns.
                 $productData = array_combine($header, $row);
 
-                //Collect category, manufacturer, and department.
-                $categoryNames[] = $productData['category_name'];
-                $departmentNames[] = $productData['department_name'];
-                $manufacturerNames[] = $productData['manufacturer_name'];
+                //Collect products.
+                $products[] = [
+                    'product_number' => $productData['product_number'],
+                    'category_name' => $productData['category_name'],
+                    'department_name' => $productData['department_name'],
+                    'manufacturer_name' => $productData['manufacturer_name'],
+                    'upc' => $productData['upc'],
+                    'sku' => $productData['sku'],
+                    'regular_price' => $productData['regular_price'],
+                    'sale_price' => $productData['sale_price'],
+                    'description' => $productData['description'],
+                ];
 
                 //If the chunk size is reached, create a job.
                 if (++$counter % $chunkSize == 0) {
-                    $jobs[] = new ProcessProductData($categoryNames, $departmentNames, $manufacturerNames);
+                    $jobs[] = new ProcessProductData($products);
 
-                    $categoryNames = [];
-                    $departmentNames = [];
-                    $manufacturerNames = [];
+                    $products = [];
                 }
             }
 
             //Handle any remaining data.
-            if (count($categoryNames) > 0) {
-                $jobs[] = new ProcessProductData($categoryNames, $departmentNames, $manufacturerNames);
+            if (count($products) > 0) {
+                $jobs[] = new ProcessProductData($products);
             }
 
             //Dispatch batch of jobs.
             $this->dispatchBatch($jobs);
+
+            $this->info("Import completed successfully!");
 
             fclose($handle);
         } else {
@@ -119,7 +123,6 @@ class ProcessProductFile extends Command
      */
     protected function dispatchBatch(array $jobs)
     {
-        //Dispatch the job to process the chunk asynchronously.
         Bus::batch($jobs)
         ->then(function (Batch $batch) {})
         ->catch(function (Batch $batch, Throwable $e) {})
