@@ -61,7 +61,7 @@ class ProcessProductFile extends Command
 
             $this->info("Importing data from CSV...");
 
-            //I hope you meant "department".
+            //I hope you meant "department" in the file.
             //The category, manufacturers, and departments can maybe be processed separately in different files and with different services for example, so it will then be easier for product processing.
 
             $products = [];

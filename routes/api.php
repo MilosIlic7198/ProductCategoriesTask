@@ -4,6 +4,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\DefaultController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ProductController;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,3 +27,17 @@ Route::middleware('auth:sanctum')->get('/authenticated', function (Request $requ
 });
 
 Route::get('/default-response', [DefaultController::class, 'getDefaultResponse']);
+
+Route::get('/categories', [CategoryController::class, 'getCategories']);
+
+Route::put('/categories/{id}', [CategoryController::class, 'updateCategory']);
+
+Route::delete('/categories/{id}', [CategoryController::class, 'deleteCategory']);
+
+Route::get('/products', [ProductController::class, 'getProducts']);
+
+Route::get('/categories/{id}/products', [CategoryController::class, 'getProductsOfCategory']);
+
+Route::put('/products/{id}', [ProductController::class, 'updateProduct']);
+
+Route::delete('/products/{id}', [ProductController::class, 'deleteProduct']);
