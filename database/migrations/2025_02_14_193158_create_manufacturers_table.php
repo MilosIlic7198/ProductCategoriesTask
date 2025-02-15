@@ -15,7 +15,7 @@ class CreateManufacturersTable extends Migration
     {
         Schema::create('manufacturers', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique();
+            $table->string('name')->unique(); //Unique makes it indexed.
             $table->timestamps();
         });
     }
