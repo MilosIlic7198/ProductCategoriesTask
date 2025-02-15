@@ -12,7 +12,7 @@ Ensure you have the following installed:
 - **Laravel** v8.83.27
 - **Vue.js** v2.7.16
 
-*Note: These versions are recommended but not mandatory; other versions might work as well.*
+*Note: These versions are recommended but not mandatory; other versions will probably work as well.*
 
 ### Database Configuration
 
