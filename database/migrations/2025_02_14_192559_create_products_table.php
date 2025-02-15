@@ -16,9 +16,9 @@ class CreateProductsTable extends Migration
         Schema::create('products', function (Blueprint $table) {
             $table->id();
             $table->string('product_number')->unique(); //Unique makes it indexed.
-            $table->foreignId('category_id')->constrained()->onDelete('set null');
-            $table->foreignId('department_id')->constrained()->onDelete('set null');
-            $table->foreignId('manufacturer_id')->constrained()->onDelete('set null');
+            $table->foreignId('category_id')->constrained();
+            $table->foreignId('department_id')->constrained();
+            $table->foreignId('manufacturer_id')->constrained();
             $table->string('upc');
             $table->string('sku');
             $table->decimal('regular_price', 10, 2);
