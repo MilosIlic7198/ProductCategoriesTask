@@ -41,3 +41,5 @@ Route::get('/categories/{id}/products', [ProductController::class, 'getProductsO
 Route::put('/products/{id}', [ProductController::class, 'updateProduct']);
 
 Route::delete('/products/{id}', [ProductController::class, 'deleteProduct']);
+
+Route::get('/generate-csv/{categoryId}', [ProductController::class, 'generateCsv']);

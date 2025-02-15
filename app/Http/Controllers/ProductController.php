@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 use App\Models\Product;
 use App\Models\Category;
-use Illuminate\Support\Facades\Validator;
+
+use Carbon\Carbon;
 use Exception;
 
 class ProductController extends Controller
@@ -169,5 +171,70 @@ class ProductController extends Controller
                 'payload' => null,
             ], 500);
         }
+    }
+
+    /**
+     * Generate a products csv file for the specified category.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function generateCsv($categoryId)
+    {
+        $category = Category::find($categoryId);
+        if (!$category) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The category with this id does not exist.',
+                'payload' => null,
+            ], 404);
+        }
+
+        //Structuring the file name.
+        $categoryName = preg_replace('/[^a-zA-Z0-9]/', '_', $category->name);
+        $date = Carbon::now()->format('Y_m_d-H_i');
+        $filename = $categoryName . '_' . $date . '.csv';
+
+        //Path for csv.
+        $publicPath = public_path('csv');
+        //Check if the folder exists.
+        if (!file_exists($publicPath)) {
+            mkdir($publicPath, 0775, true); //Create it if not.
+        }
+
+        $csvContent = [];
+        $csvContent[] = ['Product Number', 'UPC', 'SKU', 'Regular Price', 'Sale Price', 'Description']; //Headers.
+
+        //Adding content.
+        foreach ($category->products as $product) {
+            $csvContent[] = [
+                $product->product_number,
+                $product->upc,
+                $product->sku,
+                $product->regular_price,
+                $product->sale_price,
+                $product->description,
+            ];
+        }
+
+        //Generate CSV file and store in storage folder.
+        $path = $publicPath . '/' . $filename;
+        $file = fopen($path, 'w');
+
+        //Inserting content.
+        foreach ($csvContent as $line) {
+            fputcsv($file, $line);
+        }
+
+        fclose($file);
+
+        //Generating a URL link to download file.
+        $fileUrl = url('csv/' . $filename);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'The CSV file has successfully generated. You can copy link to the browser to download it.',
+            'payload' => $fileUrl,
+        ]);
     }
 }
