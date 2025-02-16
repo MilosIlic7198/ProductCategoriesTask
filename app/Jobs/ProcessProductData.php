@@ -84,10 +84,10 @@ class ProcessProductData implements ShouldQueue
         ->toArray();
 
         //Insert missing records if any.
-        $missingNames = array_diff($arr, array_keys($existingRecords));
-        if ($missingNames) {
-            $currentTimestamp = now();
-            $insertData = array_map(fn($name) => ['name' => $name, 'created_at' => $currentTimestamp, 'updated_at' => $currentTimestamp], $missingNames);
+        $missing = array_diff($arr, array_keys($existingRecords));
+        if ($missing) {
+            $currentTimestamp = now('CET');
+            $insertData = array_map(fn($name) => ['name' => $name, 'created_at' => $currentTimestamp, 'updated_at' => $currentTimestamp], $missing);
             DB::table($table)->insert($insertData);
         }
 
@@ -108,7 +108,7 @@ class ProcessProductData implements ShouldQueue
      */
     private function insertProducts($categories, $departments, $manufacturers) {
         $productsToInsert = [];
-        $currentTimestamp = now();
+        $currentTimestamp = now('CET');
 
         foreach ($this->products as $productData) {
             $productsToInsert[] = [
@@ -127,6 +127,10 @@ class ProcessProductData implements ShouldQueue
         }
 
         //Bulk insert products.
-        DB::table('products')->insert($productsToInsert);
+        DB::table('products')->upsert(
+            $productsToInsert,
+            ['product_number'], //Unique field that checks for duplicates.
+            ['updated_at'] //Field to update if the duplicate exists.
+        );
     }
 }
