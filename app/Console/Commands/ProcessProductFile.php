@@ -123,10 +123,15 @@ class ProcessProductFile extends Command
      */
     protected function dispatchBatch(array $jobs)
     {
+        //Using batches and jobs might not be the best solution for simple small database insertions.
+        //However if we need to insert large datasets and perform additional processing batches and jobs are very useful.
+        //This approach is intended to demonstrate possibilities for future and more complex workflows.
+
         Bus::batch($jobs)
         ->then(function (Batch $batch) {})
         ->catch(function (Batch $batch, Throwable $e) {})
         ->finally(function (Batch $batch) {})
+        ->name("Import CSV!")
         ->dispatch();
     }
 }
