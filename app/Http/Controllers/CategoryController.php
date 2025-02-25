@@ -23,7 +23,7 @@ class CategoryController extends Controller
     public function getCategories()
     {
         $response = $this->categoryService->getAllCategories();
-        return response()->json($response, $response['success'] ? 200 : 500);
+        return response()->json($response, $this->getStatusCode($response));
     }
 
     /**
@@ -39,7 +39,7 @@ class CategoryController extends Controller
      */
     {
         $response = $this->categoryService->updateCategory($id, $request->validated());
-        return response()->json($response, $response['success'] ? 200 : ($response['payload'] === null ? 404 : 500));
+        return response()->json($response, $this->getStatusCode($response));
     }
 
     /**
@@ -51,6 +51,20 @@ class CategoryController extends Controller
     public function deleteCategory($id)
     {
         $response = $this->categoryService->deleteCategory($id);
-        return response()->json($response, $response['success'] ? 200 : ($response['payload'] === null ? 404 : 500));
+        return response()->json($response, $this->getStatusCode($response));
+    }
+
+    /**
+     * Status code resolver.
+     *
+     * @param  array  $response
+     * @return int Status code.
+     */
+    private function getStatusCode(array $response)
+    {
+        if ($response['success']) {
+            return 200;
+        }
+        return $response['isServerError'] ? 500 : 404;
     }
 }
