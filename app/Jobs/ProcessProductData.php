@@ -37,7 +37,8 @@ class ProcessProductData implements ShouldQueue
     public function handle(): void
     {
         try {
-            Log::channel('jobs')->info('Starting product data processing', ['count' => count($this->products)]);            
+            $jobId = $this->job ? $this->job->getJobId() : 'N/A';
+            Log::channel('jobs')->info('Starting product data processing', ['jobId' => $jobId, 'count' => count($this->products)]);            
             //Database transaction.
             DB::transaction(function () {
                 //Collect category, department, and manufacturer values.
@@ -51,14 +52,15 @@ class ProcessProductData implements ShouldQueue
 
                 $this->insertProducts($categoryIds, $departmentIds, $manufacturerIds);
             });
-            $jobId = $this->job ? $this->job->getJobId() : 'N/A';
+
             Log::channel('jobs')->info('Finished product data processing', ['jobId' => $jobId]);
         } catch (Throwable $e) {
-            Log::channel('jobs')->error('Failed to process product data batch', [
+
+            Log::channel('jobs')->error('Failed to process product data in job', [
                 'error' => $e->getMessage(),
                 'line' => $e->getLine(),
                 'file' => $e->getFile(),
-                'batch_id' => $this->batchId ?? 'N/A',
+                'jobId' => $jobId,
             ]);
             $this->fail($e);
         }
@@ -81,12 +83,9 @@ class ProcessProductData implements ShouldQueue
      */
     private function insertAndGetIds(string $table, array $names): array
     {
-        $existingRecords = DB::table($table)
-        ->whereIn('name', $names)
-        ->pluck('id', 'name')
-        ->all();
-
+        $existingRecords = DB::table($table)->whereIn('name', $names)->pluck('id', 'name')->all();
         $missing = array_diff($names, array_keys($existingRecords));
+
         if (!empty($missing)) {
             $timestamp = now('CET');
             $insertData = array_map(fn(string $name): array => [
@@ -97,10 +96,7 @@ class ProcessProductData implements ShouldQueue
             DB::table($table)->insert($insertData);
         }
 
-        return DB::table($table)
-        ->whereIn('name', $names)
-        ->pluck('id', 'name')
-        ->all();
+        return DB::table($table)->whereIn('name', $names)->pluck('id', 'name')->all();
     }
 
     /**
@@ -116,21 +112,19 @@ class ProcessProductData implements ShouldQueue
         $productsToInsert = [];
         $timestamp = now('CET');
 
-        foreach ($this->products as $productData) {
-            $productsToInsert[] = [
-                'product_number' => $productData['product_number'],
-                'category_id' => $categories[$productData['category_name']],
-                'department_id' => $departments[$productData['department_name']],
-                'manufacturer_id' => $manufacturers[$productData['manufacturer_name']],
-                'upc' => $productData['upc'],
-                'sku' => $productData['sku'],
-                'regular_price' => $productData['regular_price'],
-                'sale_price' => $productData['sale_price'],
-                'description' => $productData['description'],
-                'created_at' => $timestamp,
-                'updated_at' => $timestamp,
-            ];
-        }
+        $productsToInsert = array_map(fn(array $productData): array => [
+            'product_number' => $productData['product_number'],
+            'category_id' => $categories[$productData['category_name']],
+            'department_id' => $departments[$productData['department_name']],
+            'manufacturer_id' => $manufacturers[$productData['manufacturer_name']],
+            'upc' => $productData['upc'],
+            'sku' => $productData['sku'],
+            'regular_price' => $productData['regular_price'],
+            'sale_price' => $productData['sale_price'],
+            'description' => $productData['description'],
+            'created_at' => $timestamp,
+            'updated_at' => $timestamp,
+        ], $this->products);
 
         //Bulk insert products.
         DB::table('products')->upsert(

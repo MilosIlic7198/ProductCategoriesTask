@@ -9,6 +9,8 @@ use Exception;
 
 class ProcessProductFile extends Command
 {
+
+    private ProductImportService $importService;
     /**
      * The name and signature of the console command.
      *

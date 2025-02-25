@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Jobs\ProcessProductData;
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Log;
 use Exception;
 use Throwable;
 
@@ -83,9 +84,9 @@ class ProductImportService
 
         return Bus::batch($jobs)
         ->then(function (Batch $batch) {
-            //
+            Log::channel('jobs')->info('The batch of jobs has successfully finished processing!', ['batchId' => $batch->id]); 
         })->catch(function (Batch $batch, Throwable $e) {
-            //
+            Log::channel('jobs')->info('Something went wrong while processing batch of jobs!', ['batchId' => $batch->id, 'error' => $e->getMessage()]); 
         })->finally(function (Batch $batch) {
             //
         })
