@@ -14,7 +14,7 @@
 </head>
 
 <body>
-    <div id="app"><App /></div>
+    <div id="app"></div>
 
     <!-- Scripts -->
     <script defer src="{{ mix('js/app.js') }}"></script>

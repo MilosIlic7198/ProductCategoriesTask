@@ -4,13 +4,12 @@
 
 Ensure you have the following installed:
 
-- **PHP** v7.4.33 (with Zend Engine v3.4.0)
-- **Composer** v2.5.7
-- **Node.js** v16.14.2
-- **MySQL** v8.0.31
-- **Wampserver** v3.3.0
-- **Laravel** v8.83.27
-- **Vue.js** v2.7.16
+- **PHP** v8.4.4 (with Zend Engine v4.4.4)
+- **Composer** v2.8.5
+- **Node.js** v22.14.0
+- **MySQL** v8.4.4
+- **Laravel** v11.44.0
+- **Vue.js** v3.5.13
 
 *Note: These versions are recommended but not mandatory; other versions will probably work as well.*
 
@@ -20,7 +19,7 @@ Create a `.env` file with the following database connection variables:
 
 ```ini
 DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
+DB_HOST=localhost
 DB_PORT=3306
 DB_DATABASE=mydb
 DB_USERNAME=root

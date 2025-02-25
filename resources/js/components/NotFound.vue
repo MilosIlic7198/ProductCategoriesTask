@@ -9,7 +9,7 @@
 <script>
 export default {
     name: 'NotFound',
-    data() {
+    setup() {
         return {};
     }
 };

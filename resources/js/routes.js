@@ -8,7 +8,7 @@ const routes = [
         name: "Home",
     },
     {
-        path: "*",
+        path: "/:pathMatch(.*)*",
         component: NotFound,
         name: "NotFound",
     }

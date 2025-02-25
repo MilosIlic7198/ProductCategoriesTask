@@ -16,9 +16,9 @@ class CreateProductsTable extends Migration
         Schema::create('products', function (Blueprint $table) {
             $table->id();
             $table->string('product_number')->unique(); //Unique makes it indexed.
-            $table->foreignId('category_id')->constrained();
-            $table->foreignId('department_id')->constrained();
-            $table->foreignId('manufacturer_id')->constrained();
+            $table->foreignId('category_id');
+            $table->foreignId('department_id');
+            $table->foreignId('manufacturer_id');
             $table->string('upc');
             $table->string('sku');
             $table->decimal('regular_price', 10, 2);
@@ -28,9 +28,7 @@ class CreateProductsTable extends Migration
             $table->softDeletes();  //Added soft delete column.
 
             //Adding indexes to the foreign key columns.
-            $table->index('category_id');
-            $table->index('department_id');
-            $table->index('manufacturer_id');
+            $table->index(['category_id', 'department_id', 'manufacturer_id']);
         });
     }
 
