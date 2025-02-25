@@ -10,6 +10,8 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class ProcessProductData implements ShouldQueue
 {
@@ -32,40 +34,42 @@ class ProcessProductData implements ShouldQueue
      *
      * @return void
      */
-    public function handle()
+    public function handle(): void
     {
         try {
-            //Collect unique category, department, and manufacturer names.
-            $categoriesCol = array_column($this->products, 'category_name');
-            $departmentsCol =  array_column($this->products, 'department_name');
-            $manufacturersCol =  array_column($this->products, 'manufacturer_name');
-            //
-            $categories = array_unique($categoriesCol);
-            $departments = array_unique($departmentsCol);
-            $manufacturers = array_unique($manufacturersCol);
-
+            Log::channel('jobs')->info('Starting product data processing', ['count' => count($this->products)]);            
             //Database transaction.
-            DB::beginTransaction();
-            $this->process($categories, $departments, $manufacturers);
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            dd($e->getMessage(), $e->getLine());
+            DB::transaction(function () {
+                //Collect category, department, and manufacturer values.
+                $categories = $this->getUniqueValues('category_name');
+                $departments =  $this->getUniqueValues('department_name');
+                $manufacturers =  $this->getUniqueValues('manufacturer_name');
+
+                $categoryIds = $this->insertAndGetIds('categories', $categories);
+                $departmentIds = $this->insertAndGetIds('departments', $departments);
+                $manufacturerIds = $this->insertAndGetIds('manufacturers', $manufacturers);
+
+                $this->insertProducts($categoryIds, $departmentIds, $manufacturerIds);
+            });
+            $jobId = $this->job ? $this->job->getJobId() : 'N/A';
+            Log::channel('jobs')->info('Finished product data processing', ['jobId' => $jobId]);
+        } catch (Throwable $e) {
+            Log::channel('jobs')->error('Failed to process product data batch', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'batch_id' => $this->batchId ?? 'N/A',
+            ]);
+            $this->fail($e);
         }
     }
 
     /**
-     * Process the job.
-     *
-     * @return void
+     * Collect unique category, department, and manufacturer values by key.
      */
-    private function process($categories, $departments, $manufacturers) {
-        //Bulk insert and get ids.
-        $categories = $this->insertAndGetIds('categories', $categories);
-        $departments = $this->insertAndGetIds('departments', $departments);
-        $manufacturers = $this->insertAndGetIds('manufacturers', $manufacturers);
-
-        $this->insertProducts($categories, $departments, $manufacturers);
+    private function getUniqueValues(string $key): array
+    {
+        return array_unique(array_column($this->products, $key));
     }
 
     /**
@@ -75,40 +79,42 @@ class ProcessProductData implements ShouldQueue
      * @param  array  $arr
      * @return array
      */
-    private function insertAndGetIds($table, $arr)
+    private function insertAndGetIds(string $table, array $names): array
     {
-        //Get existing records.
         $existingRecords = DB::table($table)
-        ->whereIn('name', $arr)
+        ->whereIn('name', $names)
         ->pluck('id', 'name')
-        ->toArray();
+        ->all();
 
-        //Insert missing records if any.
-        $missing = array_diff($arr, array_keys($existingRecords));
-        if ($missing) {
-            $currentTimestamp = now('CET');
-            $insertData = array_map(fn($name) => ['name' => $name, 'created_at' => $currentTimestamp, 'updated_at' => $currentTimestamp], $missing);
+        $missing = array_diff($names, array_keys($existingRecords));
+        if (!empty($missing)) {
+            $timestamp = now('CET');
+            $insertData = array_map(fn(string $name): array => [
+                'name' => $name,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ], $missing);
             DB::table($table)->insert($insertData);
         }
 
-        //Return records.
         return DB::table($table)
-        ->whereIn('name', $arr)
+        ->whereIn('name', $names)
         ->pluck('id', 'name')
-        ->toArray();
+        ->all();
     }
 
     /**
-     * Insert products into the database.
+     * Insert or update products into the database.
      *
      * @param  array  $categories
      * @param  array  $departments
      * @param  array  $manufacturers
      * @return void
      */
-    private function insertProducts($categories, $departments, $manufacturers) {
+    private function insertProducts(array $categories, array $departments, array $manufacturers): void
+    {
         $productsToInsert = [];
-        $currentTimestamp = now('CET');
+        $timestamp = now('CET');
 
         foreach ($this->products as $productData) {
             $productsToInsert[] = [
@@ -121,8 +127,8 @@ class ProcessProductData implements ShouldQueue
                 'regular_price' => $productData['regular_price'],
                 'sale_price' => $productData['sale_price'],
                 'description' => $productData['description'],
-                'created_at' => $currentTimestamp,
-                'updated_at' => $currentTimestamp,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
             ];
         }
 

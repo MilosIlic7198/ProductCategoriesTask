@@ -113,6 +113,11 @@ return [
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
+        //Added jobs channel for logs.
+        'jobs' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/jobs.log'),
+            'level' => env('LOG_LEVEL', 'info'),
+        ],
     ],
-
 ];
