@@ -11,9 +11,8 @@ use Throwable;
 
 class ProductImportService
 {
-    public function __construct( //These are all dependencies that will be injected into the class when an object is instantiated.
-        private CsvReaderService $csvReader,
-        private ProductTransformerService $transformer
+    public function __construct( //This dependency will be injected into the class when an object is instantiated.
+        private CsvService $csvService,
     ) {}
     
     /**
@@ -21,7 +20,7 @@ class ProductImportService
      */
     public function processCsv(string $filePath): Batch
     {
-        $lazyProducts = $this->csvReader->read($filePath); //Read and return.
+        $lazyProducts = $this->csvService->read($filePath); //Read and return.
 
         $products = [];
         $jobs = [];
@@ -29,8 +28,7 @@ class ProductImportService
 
         $lazyProducts->chunk($chunkSize)->each(function ($chunk) use (&$jobs) {
             $chunkArray = $chunk->all(); //Convert chunk to array for validation/transformation.
-            $transformedProducts = $this->transformer->transformChunk($chunkArray);
-            $jobs[] = new ProcessProductData($transformedProducts);
+            $jobs[] = new ProcessProductData($chunkArray);
         });
 
         //Dispatch batch of jobs and return batch.

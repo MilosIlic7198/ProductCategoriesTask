@@ -7,13 +7,14 @@ use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use Exception;
 
-class CsvReaderService
+class CsvService
 {
     /**
      * Create a new class instance.
      */
     public function __construct(
-        private readonly ProductValidatorService $validator
+        private readonly ProductValidatorService $validator,
+        private readonly ProductTransformerService $transformer
     ) {}
 
     public function read(string $filePath): LazyCollection
@@ -34,9 +35,15 @@ class CsvReaderService
             while (($row = fgetcsv($handle)) !== false) {
                 $data = array_combine($header, $row);
                 //Validates row.
-                if ($this->isValidRow($data)) {
-                    yield $data;
+                if (!$this->isValidRow($data)) {
+                    continue;
                 }
+                //Transform the row and yield the result.
+                $transformedData = $this->transformRow($data);
+                if ($transformedData === null) {
+                    continue;
+                }
+                yield $transformedData;
             }
             //Ensure the file is closed after iteration.
             fclose($handle);
@@ -86,6 +93,23 @@ class CsvReaderService
         } catch (InvalidArgumentException $e) {
             Log::channel('csvImport')->info('Skipped invalid row', ['row' => $row, 'error' => $e->getMessage()]);   
             return false;
+        }
+    }
+
+    /**
+     * Transforms a row using the ProductTransformerService.
+     *
+     * @param array $row The row to transform.
+     * @return array|null The transformed data or null if transformation fails.
+     */
+    private function transformRow(array $row): ?array
+    {
+        try {
+            $transformedData = $this->transformer->transform($row);
+            return $transformedData;
+        } catch (InvalidArgumentException $e) {
+            Log::channel('csvImport')->info('Skipped row due to transformation error', ['row' => $row,'error' => $e->getMessage()]);
+            return null;
         }
     }
 }

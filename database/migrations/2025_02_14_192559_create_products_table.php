@@ -19,8 +19,8 @@ class CreateProductsTable extends Migration
             $table->foreignId('category_id');
             $table->foreignId('department_id');
             $table->foreignId('manufacturer_id');
-            $table->string('upc');
-            $table->string('sku');
+            $table->bigInteger('upc');
+            $table->bigInteger('sku');
             $table->decimal('regular_price', 10, 2);
             $table->decimal('sale_price', 10, 2);
             $table->text('description');
