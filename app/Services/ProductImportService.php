@@ -11,60 +11,29 @@ use Throwable;
 
 class ProductImportService
 {
+    public function __construct( //These are all dependencies that will be injected into the class when an object is instantiated.
+        private CsvReaderService $csvReader,
+        private ProductValidatorService $validator,
+        private ProductTransformerService $transformer
+    ) {}
+    
     /**
      * Process a CSV file and dispatch jobs.
      */
     public function processCsv(string $filePath): Batch
     {
-        //Check if file exists.
-        if (!file_exists($filePath)) {
-            throw new Exception("File not found: $filePath");
-        }
-
-        //Open the CSV file.
-        $handle = fopen($filePath, 'r');
-        if ($handle === false) { //Checks if the file was successfully opened. If the file cant be opened, the script wont continue processing the CSV.
-            throw new Exception("Failed to open the file: $filePath");
-        }
-
-        //Get the header row to map columns.
-        $header = fgetcsv($handle);
+        $lazyProducts = $this->csvReader->read($filePath); //Read and return.
 
         $products = [];
         $jobs = [];
         $chunkSize = 50;
 
-        //Read each line of the CSV.
-        while (($row = fgetcsv($handle)) !== false) { //Checks if there are more rows to read in the CSV file. If there are no more rows or an error occurs, the loop stops.
-            //Map the CSV columns.
-            $productData = array_combine($header, $row);
-
-            //Collect products.
-            $products[] = [
-                'product_number' => $productData['product_number'],
-                'category_name' => $productData['category_name'],
-                'department_name' => $productData['department_name'],
-                'manufacturer_name' => $productData['manufacturer_name'],
-                'upc' => $productData['upc'],
-                'sku' => $productData['sku'],
-                'regular_price' => $productData['regular_price'],
-                'sale_price' => $productData['sale_price'],
-                'description' => $productData['description'],
-            ];
-
-            //If the chunk size is reached, create a job.
-            if (count($products) === $chunkSize) {
-                $jobs[] = new ProcessProductData($products);
-                $products = [];
-            }
-        }
-
-        //Handle any remaining data.
-        if (!empty($products)) {
-            $jobs[] = new ProcessProductData($products);
-        }
-
-        fclose($handle);
+        $lazyProducts->chunk($chunkSize)->each(function ($chunk) use (&$jobs) {
+            $chunkArray = $chunk->all(); //Convert chunk to array for validation/transformation.
+            $this->validator->validateChunk($chunkArray);
+            $transformedProducts = $this->transformer->transformChunk($chunkArray);
+            $jobs[] = new ProcessProductData($transformedProducts);
+        });
 
         //Dispatch batch of jobs and return batch.
         return $this->dispatchBatch($jobs);
@@ -83,14 +52,9 @@ class ProductImportService
         //This approach is intended to demonstrate possibilities for future and more complex workflows.
 
         return Bus::batch($jobs)
-        ->then(function (Batch $batch) {
-            Log::channel('jobs')->info('The batch of jobs has successfully finished processing!', ['batchId' => $batch->id]); 
-        })->catch(function (Batch $batch, Throwable $e) {
-            Log::channel('jobs')->info('Something went wrong while processing batch of jobs!', ['batchId' => $batch->id, 'error' => $e->getMessage()]); 
-        })->finally(function (Batch $batch) {
-            //
-        })
-        ->name('Import CSV Products')
-        ->dispatch();
+            ->then(fn(Batch $batch) => Log::channel('jobs')->info('Batch finished successfully!', ['batchId' => $batch->id]))
+            ->catch(fn(Batch $batch, Throwable $e) => Log::channel('jobs')->info('Batch failed!', ['batchId' => $batch->id,'error' => $e->getMessage()]))
+            ->name('Import CSV Products')
+            ->dispatch();
     }
 }
