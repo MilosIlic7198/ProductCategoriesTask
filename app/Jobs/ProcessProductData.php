@@ -11,68 +11,26 @@ use Illuminate\Queue\SerializesModels;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use InvalidArgumentException;
 use Throwable;
-
-//Defined enums for default values specific to each field.
-enum ProductDefault: string {
-    case Unknown = 'Unknown';
-    case NoInformation = 'N/I';
-    case NoPrice = '0.00';
-}
 
 class ProcessProductData implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * Example of property hooks. (PHP 8.4)
-     * The array of products with validation and transformation via property hooks.
-     * Property hooks work on individual properties, so we apply them to $products as an array, validating/transforming each row within the setter.
-     * Property hooks let us define custom logic for getting and setting property values directly within the property declaration.
-     * This property book is both writing and reading data.
-     */
-    public array $products {
-        set {
-            //Validate and transform each product.
-            $this->products = array_map(function (array $product): array {
-                if (empty($product['product_number'])) {
-                    throw new InvalidArgumentException("Product number is required.");
-                }
-                if (empty($product['category_name'])) {
-                    throw new InvalidArgumentException("Category name is required for product {$product['product_number']}.");
-                }
-
-                //Transformation.
-                return [
-                    'product_number' => trim($product['product_number']),
-                    'category_name' => trim($product['category_name']),
-                    'department_name' => empty($product['department_name']) ? ProductDefault::Unknown->value : trim($product['department_name']),
-                    'manufacturer_name' => empty($product['manufacturer_name']) ? ProductDefault::Unknown->value : trim($product['manufacturer_name']),
-                    'upc' => empty($product['upc']) ? ProductDefault::NoInformation->value : trim($product['upc']),
-                    'sku' => empty($product['sku']) ? ProductDefault::NoInformation->value : trim($product['sku']),
-                    'regular_price' => empty($product['regular_price']) ? ProductDefault::NoPrice->value : trim($product['regular_price']),
-                    'sale_price' => empty($product['sale_price']) ? ProductDefault::NoPrice->value : trim($product['sale_price']),
-                    'description' => empty($product['description']) ? ProductDefault::NoInformation->value : trim($product['description']),
-                ];
-            }, $value);
-        }
-        get {
-            return $this->products;
-        }
-    }
+    //I have removed property hooks.
 
     /**
      * Create a new job instance.
      *
      * @return void
      */
-    public function __construct(array $products)
-    {
-        //This triggers the setter hook immediately, validating and transforming the data when the job is instantiated.
-        //For large chunks, for example from 500 to 1000, this is fine, but for more, i would consider separating validating/transforming or moving it in handle method instead to avoid memory issues during serialization.
-        $this->products = $products;
-    }
+    public function __construct(
+        //Since we are only inserting products into the database it is a good thing for it to be readonly propertie for immutability.
+        //Immutability ensures that the state of an array cannot change after it is created.
+        //This is helpful because the injected array should not be altered during the object lifetime.
+        //Allowing immutability ensures they will remain consistent and predictable.
+        private readonly array $products
+    ) {}
 
     /**
      * Execute the job.
