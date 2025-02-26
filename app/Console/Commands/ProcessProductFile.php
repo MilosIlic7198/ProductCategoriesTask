@@ -55,7 +55,7 @@ class ProcessProductFile extends Command
             return 0;
         } catch (Exception $e) {
             $errMsg = $e->getMessage();
-            $this->error("Error has occurred while processing csv flle: \n {$errMsg}");
+            $this->error("Error has occurred while trying to start csv processing: \n {$errMsg}");
             return 1;
         }
     }
