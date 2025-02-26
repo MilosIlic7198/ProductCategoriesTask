@@ -119,5 +119,11 @@ return [
             'path' => storage_path('logs/jobs.log'),
             'level' => env('LOG_LEVEL', 'info'),
         ],
+        //Added csvImport channel for logs.
+        'csvImport' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/csvImport.log'),
+            'level' => env('LOG_LEVEL', 'info'),
+        ],
     ],
 ];

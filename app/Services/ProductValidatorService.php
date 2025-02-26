@@ -23,11 +23,4 @@ class ProductValidatorService
             throw new InvalidArgumentException("Category name is required for product {$product['product_number']}.");
         }
     }
-
-    public function validateChunk(array $products): void
-    {
-        foreach ($products as $product) {
-            $this->validate($product);
-        }
-    }
 }

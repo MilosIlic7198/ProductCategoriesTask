@@ -36,8 +36,6 @@ class ProductTransformerService
 
     public function transformChunk(array $products): array
     {
-        return array_map(function ($product) {
-            return $this->transform($product);
-        }, $products);
+        return array_map(fn ($product) => $this->transform($product), $products);
     }
 }

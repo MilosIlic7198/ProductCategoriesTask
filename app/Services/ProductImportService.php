@@ -13,7 +13,6 @@ class ProductImportService
 {
     public function __construct( //These are all dependencies that will be injected into the class when an object is instantiated.
         private CsvReaderService $csvReader,
-        private ProductValidatorService $validator,
         private ProductTransformerService $transformer
     ) {}
     
@@ -30,7 +29,6 @@ class ProductImportService
 
         $lazyProducts->chunk($chunkSize)->each(function ($chunk) use (&$jobs) {
             $chunkArray = $chunk->all(); //Convert chunk to array for validation/transformation.
-            $this->validator->validateChunk($chunkArray);
             $transformedProducts = $this->transformer->transformChunk($chunkArray);
             $jobs[] = new ProcessProductData($transformedProducts);
         });
