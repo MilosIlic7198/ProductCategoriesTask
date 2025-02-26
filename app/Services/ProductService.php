@@ -52,8 +52,11 @@ class ProductService
     }
 
     /**
-     * Generate a CSV file for products of a specific category.
-     */
+    * Generate a CSV file for products of a specific category.
+    *
+    * @param int $categoryId The ID of the category
+    * @return array The formatted response.
+    */
     public function generateCsv(int $categoryId)
     {
         try {
@@ -61,45 +64,86 @@ class ProductService
             if (!$category) {
                 return $this->formatResponse(false, 'The category with this id does not exist.', null, false);
             }
+            
+            $filename = $this->generateFilename($category->name);
+            $storagePath = $this->ensureStorageDirectory();
+            $csvData = $this->prepareCsvData($category->products);
 
-            $categoryName = preg_replace('/[^a-zA-Z0-9]/', '_', strtolower($category->name));
-            $categoryName = trim($categoryName, '_');
-            $categoryName = preg_replace('/_+/', '_', $categoryName);
+            $this->writeCsvFile($storagePath, $filename, $csvData);
 
-            $date = Carbon::now('CET')->format('Y_m_d-H_i');
-            $filename = $categoryName . '_' . $date . '.csv';
-
-            $storagePath = storage_path('app/public/csv');
-            if (!file_exists($storagePath)) {
-                mkdir($storagePath, 0775, true);
-            }
-
-            $csvContent = [];
-            $csvContent[] = ['Product Number', 'UPC', 'SKU', 'Regular Price', 'Sale Price', 'Description'];
-
-            foreach ($category->products as $product) {
-                $csvContent[] = [
-                    $product->product_number,
-                    $product->upc,
-                    $product->sku,
-                    $product->regular_price,
-                    $product->sale_price,
-                    $product->description,
-                ];
-            }
-
-            $path = $storagePath . '/' . $filename;
-            $file = fopen($path, 'w');
-            foreach ($csvContent as $line) {
-                fputcsv($file, $line);
-            }
-            fclose($file);
-
-            $fileUrl = url('storage/csv/' . $filename);
-            return $this->formatResponse(true, 'The CSV file has successfully generated. You can copy link to the browser to download it.', $fileUrl);
+            return $this->formatResponse(
+                true,
+                'The CSV file has successfully generated. You can copy link to the browser to download it.',
+                url('storage/csv/' . $filename)
+            );
         } catch (Exception $e) {
             return $this->formatResponse(false, 'An error occurred while generating the CSV.', null, true);
         }
+    }
+
+
+    /**
+    * Generate filename based on category name and timestamp.
+    */
+    private function generateFilename(string $categoryName): string
+    {
+        //Structuring the file name.
+        $sanitizedName = preg_replace('/[^a-zA-Z0-9]/', '_', strtolower($categoryName));
+        $sanitizedName = trim($sanitizedName, '_'); //This part was not fun at all.
+        $sanitizedName = preg_replace('/_+/', '_', $sanitizedName);
+        
+        $timestamp = Carbon::now('CET')->format('Y_m_d-H_i');
+        return "{$sanitizedName}_{$timestamp}.csv";
+    }
+
+    /**
+    * Ensure the storage directory exists and return its path.
+    */
+    private function ensureStorageDirectory(): string
+    {
+        //Path for csv.
+        $path = storage_path('app/public/csv');
+        // //Check if the folder exists.
+        if (!file_exists($path)) {
+            mkdir($path, 0775, true); //Create it if not.
+        }
+        return $path;
+    }
+
+    /**
+    * Prepare CSV data from products collection.
+    */
+    private function prepareCsvData($products): array
+    {
+        //Headers.
+        $csvData = [['Product Number', 'UPC', 'SKU', 'Regular Price', 'Sale Price', 'Description']];
+        //Adding content.
+        foreach ($products as $product) {
+            $csvData[] = [
+                $product->product_number,
+                $product->upc,
+                $product->sku,
+                $product->regular_price,
+                $product->sale_price,
+                $product->description,
+            ];
+        }
+        return $csvData;
+    }
+
+    /**
+    * Write data to CSV file.
+    */
+    private function writeCsvFile(string $storagePath, string $filename, array $csvData): void
+    {
+        //Generate CSV file and store in storage folder.
+        $filePath = "$storagePath/$filename";
+        $file = fopen($filePath, 'w');
+        //Inserting content.
+        foreach ($csvData as $line) {
+            fputcsv($file, $line);
+        }
+        fclose($file);
     }
 
     /**
