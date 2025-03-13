@@ -10,7 +10,7 @@ class CategoryService
     /**
      * Get all categories.
      */
-    public function getAllCategories()
+    public function getAllCategories(): array
     {
         return $this->confirm(function () {
             return Category::all();
@@ -20,9 +20,11 @@ class CategoryService
     /**
      * Update a category.
      */
-    public function updateCategory(int $id, array $data)
+    public function updateCategory(Category $category, array $data): array
     {
-        return $this->confirmCategory($id, function ($category) use ($data) {
+        return $this->confirm(function () use ($category, $data) {
+            //Set updated_at to current CET time.
+            $data['updated_at'] = now('CET');
             $category->update($data);
             return $category;
         }, 'Category updated successfully.');
@@ -31,9 +33,9 @@ class CategoryService
     /**
      * Delete a category.
      */
-    public function deleteCategory(int $id)
+    public function deleteCategory(Category $category): array
     {
-        return $this->confirmCategory($id, function ($category) {
+        return $this->confirm(function () use ($category) {
             $category->delete();
             return null;
         }, 'Category deleted successfully.');
@@ -42,53 +44,28 @@ class CategoryService
     /**
      * For straight forward operations execution.
      */
-    private function confirm(callable $operation, string $successMessage)
-    {
-        try {
-            $result = $operation();
-            return $this->formatResponse(true, $successMessage, $result);
-        } catch (Exception $e) {
-            return $this->formatResponse(false, 'An error occurred while processing the request.', null, true);
-        }
-    }
-
-    /**
-     * Handle not found case.
-     *
-     * Executes a given operation on a category if it exists, handling errors and formatting the response.
-     *
-     * @param int $id The id of the category.
-     * @param callable $operation A function to execute on the found category, receiving the category as an argument.
-     * @param string $successMessage The message to return on success.
-     * @return array The formatted response.
-     */
-    private function confirmCategory(int $id, callable $operation, string $successMessage)
+    private function confirm(callable $operation, string $successMessage): array
     /**
      * The callable is a way to pass a function as an argument that the method can execute.
      */
     {
         try {
-            $category = Category::find($id);
-            if (!$category) {
-                return $this->formatResponse(false, 'The category with this id does not exist.', null, false);
-            }
-            $result = $operation($category);
+            $result = $operation();
             return $this->formatResponse(true, $successMessage, $result);
         } catch (Exception $e) {
-            return $this->formatResponse(false, 'An error occurred while processing the category.', null, true);
+            return $this->formatResponse(false, 'An error occurred while processing the request.', null);
         }
     }
 
     /**
      * Format response based on success or failure.
      */
-    private function formatResponse(bool $success, string $message, $payload = null, bool $isServerError = false)
+    private function formatResponse(bool $success, string $message, $payload = null): array
     {
         return [
             'success' => $success,
             'message' => $message,
             'payload' => $payload,
-            'isServerError' => $isServerError, //Added this to differentiate.
         ];
     }
 }

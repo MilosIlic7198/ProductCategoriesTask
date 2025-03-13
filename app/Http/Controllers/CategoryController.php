@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 
 use App\Http\Requests\UpdateCategoryRequest;
 use App\Services\CategoryService;
+use App\Models\Category;
 
 class CategoryController extends Controller
 {
@@ -30,27 +31,31 @@ class CategoryController extends Controller
      * Update the specified category.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
+     * @param  Category  $category
      * @return \Illuminate\Http\Response
      */
-    public function updateCategory(UpdateCategoryRequest $request, $id)
+    public function updateCategory(UpdateCategoryRequest $request, Category $category)
     /**
      * When we type-hint a FormRequest class in the method signature, laravel dependency injection system automatically resolves it and runs its validation logic before the controller method is executed.
      */
+    /** 
+     * Laravel route model binding automatically resolves Eloquent models from route parameters.
+     * If no record is found, a 404 is returned before the method executes, simplifying ID validation.
+     */
     {
-        $response = $this->categoryService->updateCategory($id, $request->validated());
+        $response = $this->categoryService->updateCategory($category, $request->validated());
         return response()->json($response, $this->getStatusCode($response));
     }
 
     /**
      * Remove the specified category.
      *
-     * @param  int  $id
+     * @param  Category  $category
      * @return \Illuminate\Http\Response
      */
-    public function deleteCategory($id)
+    public function deleteCategory(Category $category)
     {
-        $response = $this->categoryService->deleteCategory($id);
+        $response = $this->categoryService->deleteCategory($category);
         return response()->json($response, $this->getStatusCode($response));
     }
 
@@ -60,11 +65,8 @@ class CategoryController extends Controller
      * @param  array  $response
      * @return int Status code.
      */
-    private function getStatusCode(array $response)
+    private function getStatusCode(array $response): int
     {
-        if ($response['success']) {
-            return 200;
-        }
-        return $response['isServerError'] ? 500 : 404;
+        return $response['success'] ? 200 : 500;
     }
 }

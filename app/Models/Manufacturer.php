@@ -12,6 +12,6 @@ class Manufacturer extends Model
     protected $table = 'manufacturers';
 
     protected $fillable = [
-        'name',
+        'name', 'created_at', 'updated_at',
     ];
 }

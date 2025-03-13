@@ -29,11 +29,11 @@ Route::middleware('auth:sanctum')->get('/authenticated', function (Request $requ
 //Category routes.
 Route::prefix('categories')->group(function () {
     Route::get('/', [CategoryController::class, 'getCategories']);           //GET "/categories".
-    Route::put('/{id}', [CategoryController::class, 'updateCategory']);      //PUT "/categories/{id}".
-    Route::delete('/{id}', [CategoryController::class, 'deleteCategory']);   //DELETE "/categories/{id}".
+    Route::put('/{category}', [CategoryController::class, 'updateCategory']);      //PUT "/categories/{id}".
+    Route::delete('/{category}', [CategoryController::class, 'deleteCategory']);   //DELETE "/categories/{id}".
     
     //Nested products under categories.
-    Route::get('/{id}/products', [ProductController::class, 'getProductsOfCategory']);  //GET "/categories/{id}/products".
+    Route::get('/{category}/products', [ProductController::class, 'getProductsOfCategory']);  //GET "/categories/{id}/products".
 });
 
 //Product routes.
