@@ -39,7 +39,7 @@ Route::prefix('categories')->group(function () {
 //Product routes.
 Route::prefix('products')->group(function () {
     Route::get('/', [ProductController::class, 'getProducts']);             //GET "/products".
-    Route::put('/{id}', [ProductController::class, 'updateProduct']);       //PUT "/products/{id}".
-    Route::delete('/{id}', [ProductController::class, 'deleteProduct']);    //DELETE "/products/{id}".
-    Route::get('/generate-csv/{categoryId}', [ProductController::class, 'generateCsv']);  //GET "/products/generate-csv/{categoryId}".
+    Route::put('/{product}', [ProductController::class, 'updateProduct']);       //PUT "/products/{id}".
+    Route::delete('/{product}', [ProductController::class, 'deleteProduct']);    //DELETE "/products/{id}".
+    Route::get('/generate-csv/{category}', [ProductController::class, 'generateCsv']);  //GET "/products/generate-csv/{categoryId}".
 });

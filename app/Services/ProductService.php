@@ -12,7 +12,7 @@ class ProductService
     /**
      * Get all products.
      */
-    public function getAllProducts()
+    public function getAllProducts(): array
     {
         return $this->confirm(function () {
             return Product::all();
@@ -22,9 +22,9 @@ class ProductService
     /**
      * Get products of a specific category.
      */
-    public function getProductsOfCategory(int $id)
+    public function getProductsOfCategory(Category $category): array
     {
-        return $this->confirmCategory($id, function ($category) {
+        return $this->confirm(function () use ($category) {
             return $category->products;
         }, 'Products fetched successfully for the specified category.');
     }
@@ -32,9 +32,11 @@ class ProductService
     /**
      * Update a product.
      */
-    public function updateProduct(int $id, array $data)
+    public function updateProduct(Product $product, array $data): array
     {
-        return $this->confirmProduct($id, function ($product) use ($data) {
+        return $this->confirm(function () use ($product, $data) {
+            //Set updated_at to current CET time.
+            $data['updated_at'] = now('CET');
             $product->update($data);
             return $product;
         }, 'Product updated successfully.');
@@ -43,9 +45,9 @@ class ProductService
     /**
      * Delete a product.
      */
-    public function deleteProduct(int $id)
+    public function deleteProduct(Product $product): array
     {
-        return $this->confirmProduct($id, function ($product) {
+        return $this->confirm(function () use ($product) {
             $product->delete();
             return null;
         }, 'Product deleted successfully.');
@@ -54,17 +56,12 @@ class ProductService
     /**
     * Generate a CSV file for products of a specific category.
     *
-    * @param int $categoryId The ID of the category
+    * @param Category $category The instance of the category
     * @return array The formatted response.
     */
-    public function generateCsv(int $categoryId)
+    public function generateCsv(Category $category): array
     {
         try {
-            $category = Category::find($categoryId);
-            if (!$category) {
-                return $this->formatResponse(false, 'The category with this id does not exist.', null, false);
-            }
-            
             $filename = $this->generateFilename($category->name);
             $storagePath = $this->ensureStorageDirectory();
             $csvData = $this->prepareCsvData($category->products);
@@ -77,7 +74,7 @@ class ProductService
                 url('storage/csv/' . $filename)
             );
         } catch (Exception $e) {
-            return $this->formatResponse(false, 'An error occurred while generating the CSV.', null, true);
+            return $this->formatResponse(false, 'An error occurred while generating the CSV.', null);
         }
     }
 
@@ -149,68 +146,28 @@ class ProductService
     /**
      * Execute a closure and return formated response.
      */
-    private function confirm(callable $operation, string $successMessage)
+    private function confirm(callable $operation, string $successMessage): array
+    /**
+     * The callable is a way to pass a function as an argument that the method can execute.
+     */
     {
         try {
             $result = $operation();
             return $this->formatResponse(true, $successMessage, $result);
         } catch (Exception $e) {
-            return $this->formatResponse(false, 'Server error occurred.', null, true);
-        }
-    }
-
-    /**
-     * Execute a closure with a category and handle not found case.
-     *
-     * Executes a given operation on a category if it exists, handling errors and formatting the response.
-     *
-     * @param int $id The id of the category.
-     * @param callable $operation A function to execute on the found category, receiving the category as an argument.
-     * @param string $successMessage The message to return on success.
-     * @return array The formatted response.
-     * 
-     */
-    private function confirmCategory(int $id, callable $operation, string $successMessage)
-    {
-        try {
-            $category = Category::find($id);
-            if (!$category) {
-                return $this->formatResponse(false, 'The category with this id does not exist.', null, false);
-            }
-            $result = $operation($category);
-            return $this->formatResponse(true, $successMessage, $result);
-        } catch (Exception $e) {
-            return $this->formatResponse(false, 'Server error occurred.', null, true);
-        }
-    }
-
-    /**
-     * Execute a closure with a product and handle not found case.
-     */
-    private function confirmProduct(int $id, callable $operation, string $successMessage)
-    {
-        try {
-            $product = Product::find($id);
-            if (!$product) {
-                return $this->formatResponse(false, 'The product with this id does not exist.', null, false);
-            }
-            $result = $operation($product);
-            return $this->formatResponse(true, $successMessage, $result);
-        } catch (Exception $e) {
-            return $this->formatResponse(false, 'Server error occurred.', null, true);
+            return $this->formatResponse(false, 'Server error occurred.', null);
         }
     }
 
     /**
      * Format a response based on success or failure.
      */
-    private function formatResponse(bool $success, string $message, $payload = null, bool $isServerError = false)
+    private function formatResponse(bool $success, string $message, $payload = null): array
     {
         return [
             'success' => $success,
             'message' => $message,
             'payload' => $payload,
-            'isServerError' => $isServerError,
         ];
     }
 }
