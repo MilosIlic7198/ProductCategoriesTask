@@ -26,20 +26,20 @@ Route::middleware('auth:sanctum')->get('/authenticated', function (Request $requ
     return true;
 });
 
-Route::get('/default-response', [DefaultController::class, 'getDefaultResponse']);
+//Category routes.
+Route::prefix('categories')->group(function () {
+    Route::get('/', [CategoryController::class, 'getCategories']);           //GET "/categories".
+    Route::put('/{id}', [CategoryController::class, 'updateCategory']);      //PUT "/categories/{id}".
+    Route::delete('/{id}', [CategoryController::class, 'deleteCategory']);   //DELETE "/categories/{id}".
+    
+    //Nested products under categories.
+    Route::get('/{id}/products', [ProductController::class, 'getProductsOfCategory']);  //GET "/categories/{id}/products".
+});
 
-Route::get('/categories', [CategoryController::class, 'getCategories']);
-
-Route::put('/categories/{id}', [CategoryController::class, 'updateCategory']);
-
-Route::delete('/categories/{id}', [CategoryController::class, 'deleteCategory']);
-
-Route::get('/products', [ProductController::class, 'getProducts']);
-
-Route::get('/categories/{id}/products', [ProductController::class, 'getProductsOfCategory']);
-
-Route::put('/products/{id}', [ProductController::class, 'updateProduct']);
-
-Route::delete('/products/{id}', [ProductController::class, 'deleteProduct']);
-
-Route::get('/generate-csv/{categoryId}', [ProductController::class, 'generateCsv']);
+//Product routes.
+Route::prefix('products')->group(function () {
+    Route::get('/', [ProductController::class, 'getProducts']);             //GET "/products".
+    Route::put('/{id}', [ProductController::class, 'updateProduct']);       //PUT "/products/{id}".
+    Route::delete('/{id}', [ProductController::class, 'deleteProduct']);    //DELETE "/products/{id}".
+    Route::get('/generate-csv/{categoryId}', [ProductController::class, 'generateCsv']);  //GET "/products/generate-csv/{categoryId}".
+});

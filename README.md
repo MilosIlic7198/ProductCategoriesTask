@@ -109,14 +109,14 @@ This document provides a brief description of the available API endpoints and th
   - Deletes the category with the specified ID.
   - **Path Parameter:** `id` - The ID of the category to delete.
 
+- **GET /categories/{id}/products**
+  - Retrieves all products associated with a specific category.
+  - **Path Parameter:** `id` - The ID of the category.
+
 ## Products
 
 - **GET /products**
   - Retrieves a list of all products.
-
-- **GET /categories/{id}/products**
-  - Retrieves all products associated with a specific category.
-  - **Path Parameter:** `id` - The ID of the category.
 
 - **PUT /products/{id}**
   - Updates the product with the specified ID.
@@ -128,7 +128,7 @@ This document provides a brief description of the available API endpoints and th
 
 ## CSV Generation
 
-- **GET /generate-csv/{categoryId}**
+- **GET /products/generate-csv/{categoryId}**
   - Generates a link to download a CSV file containing the products of a specific category.
   - **Path Parameter:** `categoryId` - The ID of the category for which the CSV should be generated.
 
